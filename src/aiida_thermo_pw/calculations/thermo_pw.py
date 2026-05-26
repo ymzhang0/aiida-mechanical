@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""`CalcJob` implementation for the thermo_pw.x code of Quantum ESPRESSO."""
+"""`CalcJob` implementation for the pw.x code of Quantum ESPRESSO."""
 
 from aiida import orm
 from aiida.common import exceptions
