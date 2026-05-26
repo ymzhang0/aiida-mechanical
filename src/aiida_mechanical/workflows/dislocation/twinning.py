@@ -6,8 +6,8 @@ from aiida import orm
 from ase.formula import Formula
 from aiida_mechanical.tools import (
     get_unstable_faulted_structure,
-    calculate_surface_area,
 )
+
 
 class TwinningWorkChain(SFEBaseWorkChain):
     """Twinning WorkChain"""
@@ -22,14 +22,14 @@ class TwinningWorkChain(SFEBaseWorkChain):
             PwBaseWorkChain,
             namespace=cls._SFE_NAMESPACE,
             namespace_options={
-                'required': False,
-            }
+                "required": False,
+            },
         )
-        
+
         spec.exit_code(
             404,
             "ERROR_SUB_PROCESS_FAILED_TWINNING",
-            message='The `PwBaseWorkChain` for the twinning run failed.',
+            message="The `PwBaseWorkChain` for the twinning run failed.",
         )
 
     def setup(self):
@@ -42,7 +42,7 @@ class TwinningWorkChain(SFEBaseWorkChain):
         Twinning is not a fault type, but we need to implement this for the base class.
         For twinning, we use 'unstable' as the fault type for structure generation.
         """
-        return 'unstable'  # Use 'unstable' for structure generation purposes
+        return "unstable"  # Use 'unstable' for structure generation purposes
 
     def generate_structures(self):
         """Generate all structures including conventional, cleavaged, and twinning."""
@@ -50,9 +50,11 @@ class TwinningWorkChain(SFEBaseWorkChain):
         result = super().generate_structures()
         if result:
             return result
-        
-        gliding_plane = self.inputs.gliding_plane.value if self.inputs.gliding_plane.value else None
-        
+
+        gliding_plane = (
+            self.inputs.gliding_plane.value if self.inputs.gliding_plane.value else None
+        )
+
         # Get twinning structure using get_unstable_faulted_structure
         strukturbericht, structures_dict = get_unstable_faulted_structure(
             self.ctx.current_structure.get_ase(),
@@ -61,32 +63,34 @@ class TwinningWorkChain(SFEBaseWorkChain):
         )
 
         # Verify that twinning structure was generated
-        if 'twinning' not in structures_dict or structures_dict['twinning'] is None:
-            self.report('Twinning structure is not available for this gliding system.')
+        if "twinning" not in structures_dict or structures_dict["twinning"] is None:
+            self.report("Twinning structure is not available for this gliding system.")
             return self.exit_codes.ERROR_NO_STRUCTURE_TYPE_DETECTED
 
         # Store twinning structure directly in context
-        self.ctx.twinning_structure = structures_dict['twinning']
-        self.ctx.unfaulted_structure = self.ctx.conventional_structure  # unfaulted is the same as conventional
+        self.ctx.twinning_structure = structures_dict["twinning"]
+        self.ctx.unfaulted_structure = (
+            self.ctx.conventional_structure
+        )  # unfaulted is the same as conventional
         self.ctx.unfaulted_multiplier = self.ctx.conventional_multiplier
 
     def should_run_sfe(self):
-        if not self._SFE_NAMESPACE in self.inputs:
+        if self._SFE_NAMESPACE not in self.inputs:
             return False
-        if getattr(self.ctx, 'twinning_done', False):
+        if getattr(self.ctx, "twinning_done", False):
             return False
-        
+
         # Set up current structure and multiplier
-        if not hasattr(self.ctx, 'twinning_structure'):
-            raise ValueError('Twinning structure not found in context.')
-        
+        if not hasattr(self.ctx, "twinning_structure"):
+            raise ValueError("Twinning structure not found in context.")
+
         current_structure = orm.StructureData(ase=self.ctx.twinning_structure)
         self.ctx.current_structure = current_structure
-        
+
         twinning_formula = Formula(self.ctx.twinning_structure.get_chemical_formula())
         _, twinning_multiplier = twinning_formula.reduce()
         self.ctx.twinning_multiplier = twinning_multiplier
-        
+
         return True
 
     def run_layer_relax(self):
@@ -94,30 +98,35 @@ class TwinningWorkChain(SFEBaseWorkChain):
         # Setup kpoints for twinning structure
         faulted_structure_ase = self.ctx.current_structure.get_ase()
         conventional_structure_ase = self.ctx.conventional_structure
-        
-        z_ratio = faulted_structure_ase.cell.cellpar()[2] / conventional_structure_ase.cell.cellpar()[2]
+
+        z_ratio = (
+            faulted_structure_ase.cell.cellpar()[2]
+            / conventional_structure_ase.cell.cellpar()[2]
+        )
         kpoints_scf = self._get_kpoints_scf()
-        
+
         from math import ceil
+
         kpoints_sfe = orm.KpointsData()
         kpoints_scf_mesh = kpoints_scf.get_kpoints_mesh()[0]
-        kpoints_sfe.set_kpoints_mesh(kpoints_scf_mesh[:2] + [ceil(kpoints_scf_mesh[2] / z_ratio)])
-        
+        kpoints_sfe.set_kpoints_mesh(
+            kpoints_scf_mesh[:2] + [ceil(kpoints_scf_mesh[2] / z_ratio)]
+        )
+
         # Prepare inputs for PwBaseWorkChain
         inputs = AttributeDict(
-            self.exposed_inputs(
-                PwBaseWorkChain,
-                namespace=self._SFE_NAMESPACE
-            )
+            self.exposed_inputs(PwBaseWorkChain, namespace=self._SFE_NAMESPACE)
         )
-        
+
         inputs.pw.structure = self.ctx.current_structure
         inputs.kpoints = kpoints_sfe
         inputs.metadata.call_link_label = self._SFE_NAMESPACE
-        
+
         running = self.submit(PwBaseWorkChain, **inputs)
-        self.report(f'launching PwBaseWorkChain<{running.pk}> for twinning faulted geometry.')
-        
+        self.report(
+            f"launching PwBaseWorkChain<{running.pk}> for twinning faulted geometry."
+        )
+
         return ToContext(workchain_layer_relax=running)
 
     def inspect_layer_relax(self):
@@ -131,7 +140,7 @@ class TwinningWorkChain(SFEBaseWorkChain):
             return self.exit_codes.ERROR_SUB_PROCESS_FAILED_TWINNING
 
         self.report(
-            f'PwBaseWorkChain<{workchain.pk}> for twinning faulted geometry finished OK'
+            f"PwBaseWorkChain<{workchain.pk}> for twinning faulted geometry finished OK"
         )
         self.out_many(
             self.exposed_outputs(
@@ -147,22 +156,24 @@ class TwinningWorkChain(SFEBaseWorkChain):
         self._report_energy(
             total_energy_twinning_geometry,
             self.ctx.twinning_multiplier,
-            'twinning faulted geometry',
-            'unit cells'
-        )
-        
-        # Calculate stacking fault energy using helper method
-        twinning_stacking_fault_energy = self._calculate_stacking_fault_energy(
-            total_energy_twinning_geometry,
-            self.ctx.twinning_multiplier,
-            'twinning'
+            "twinning faulted geometry",
+            "unit cells",
         )
 
-        self.ctx.twinning_data.append({
-            'energy_ry': float(total_energy_twinning_geometry),
-            'twinning_multiplier': self.ctx.twinning_multiplier,
-            'twinning_j_m2': float(twinning_stacking_fault_energy) if twinning_stacking_fault_energy is not None else None,
-        })
+        # Calculate stacking fault energy using helper method
+        twinning_stacking_fault_energy = self._calculate_stacking_fault_energy(
+            total_energy_twinning_geometry, self.ctx.twinning_multiplier, "twinning"
+        )
+
+        self.ctx.twinning_data.append(
+            {
+                "energy_ry": float(total_energy_twinning_geometry),
+                "twinning_multiplier": self.ctx.twinning_multiplier,
+                "twinning_j_m2": float(twinning_stacking_fault_energy)
+                if twinning_stacking_fault_energy is not None
+                else None,
+            }
+        )
         self.ctx.twinning_done = True
 
     def results(self):
