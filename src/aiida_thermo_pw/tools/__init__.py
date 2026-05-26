@@ -4,10 +4,7 @@ from .workchain import (
     delete_nodes_and_remote_folder,
     check_process_state
     )
-from .analyser import (
-    ThermoPwBaseAnalyser,
-    ThermoPwBaseWorkChainState
-)
+from .analyser import ThermoPwBaseAnalyser, ThermoPwBaseWorkChainState
 from .structures import (
     get_ibrav_ase,
     get_parameters_from_structure,
