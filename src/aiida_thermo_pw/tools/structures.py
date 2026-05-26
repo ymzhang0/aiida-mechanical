@@ -59,6 +59,15 @@ ibrav_bravais_lattice_map_ase = {
     'TRI': 14,
 }
 
+crystal_system_to_space_group_number = {
+    'triclinic': [1, 2],
+    'monoclinic': [3, 15],
+    'orthorhombic': [16, 74],
+    'tetragonal': [75, 142],
+    'trigonal': [143, 167],
+    'hexagonal': [149, 194],
+    'cubic': [195, 230],
+}
 
 def is_identity(left_matrix, right_matrix, atol=1e-6):
     return np.allclose(left_matrix, right_matrix, atol=atol)
@@ -585,6 +594,11 @@ def get_standardized_structure_pymatgen(structure, eps=1e-6):
 
     return primitive_standard_structure
 
+def get_parameters_from_pymatgen_structure(pym_structure, eps=1e-6):
+    """
+    Get the cell parameters and the cartesian coordinates of the atoms in the Quantum ESPRESSO convention from the pymatgen structure.
+    """
+
 def convert_standardized_structure_pymatgen_to_qe(pym_structure, eps=1e-6):
     """
     Convert the standardized structure in pymatgen to the Quantum ESPRESSO convention.
@@ -1027,38 +1041,32 @@ def convert_standardized_structure_pymatgen_to_qe(pym_structure, eps=1e-6):
         ])
     else:
         sinab = np.sin(np.arccos(cosab))
-        if cell[0][0] < 0:
-            transformation_matrix = [
-                [-1, 0, 0],
-                [0, 1, 0],
-                [0, 0, 1],
-            ]
-            pym_structure.make_supercell(transformation_matrix)
-            cell = pym_structure.lattice.matrix
 
-        if cell[1][1] < 0:
-            transformation_matrix = [
-                [1, 0, 0],
-                [0, -1, 0],
-                [0, 0, 1],
-            ]
-            pym_structure.make_supercell(transformation_matrix)
-            cell = pym_structure.lattice.matrix
-
-        # if cell[2][0] < 0:
-        #     transformation_matrix = [
-        #         [1, 0, 0],
-        #         [0, 1, 0],
-        #         [0, 0, -1],
-        #     ]
-        #     pym_structure.make_supercell(transformation_matrix)
-        #     cell = pym_structure.lattice.matrix
-
-        if np.allclose(cell, np.array([
+        cell_qe = np.array([
             [a, 0, 0],
             [b*cosab, b*sinab, 0],
             [c*cosac,  c*(cosbc-cosac*cosab)/sinab, c*np.sqrt( 1 + 2*cosbc*cosac*cosab- cosbc**2-cosac**2-cosab**2 )/sinab],
-        ]), atol=eps):
+        ])
+        transformation_matrix =la.inv(cell) @ cell_qe
+        transformation_matrix_rounded = np.round(transformation_matrix)
+        if np.allclose(transformation_matrix, transformation_matrix_rounded, atol=eps):
+            transformation_matrix = transformation_matrix_rounded.astype(int)
+        else:
+            cell_str = np.array2string(cell, precision=6, separator=',', suppress_small=True)
+            pattern_str = np.array2string(cell_qe, precision=6, separator=',', suppress_small=True)
+            transformation_matrix_str = np.array2string(transformation_matrix_rounded, precision=6, separator=',', suppress_small=True)
+            raise ValueError(f"Cell \n{cell_str} can not be converted to the Quantum ESPRESSO convention \n{pattern_str} using integer transformation matrix. Detected non-integer transformation matrix: \n{transformation_matrix_str}. Please check the cell parameters or use ibrav = 0.")
+
+        if not abs(np.linalg.det(transformation_matrix) - 1) < eps:
+            raise ValueError(f"Transformation matrix \n{transformation_matrix_str} is not a valid rotation matrix. Please check the cell parameters or use ibrav = 0.")
+
+        pym_structure.apply_operation(SymmOp.from_rotation_and_translation(
+            rotation_matrix=transformation_matrix,
+            translation_vec=[0, 0, 0],
+        ))
+
+        cell = pym_structure.lattice.matrix
+        if np.allclose(cell, cell_qe, atol=eps):
 
             parameters['ibrav'] = 14
             parameters['a'] = a
@@ -1067,24 +1075,20 @@ def convert_standardized_structure_pymatgen_to_qe(pym_structure, eps=1e-6):
             parameters['cosab'] = cosab
             parameters['cosbc'] = cosbc
             parameters['cosac'] = cosac
-            cell_qe = np.array([
-                [a, 0, 0],
-                [b*cosab, b*sinab, 0],
-                [c*cosac,  c*(cosab-cosac*cosab)/sinab, c*np.sqrt( 1 + 2*cosbc*cosac*cosab- cosbc**2-cosac**2-cosab**2 )/sinab],
-            ])
 
+            transformation_matrix = [
+                [1, 0, 0],
+                [0, 1, 0],
+                [0, 0, 1],
+            ]
         else:
             cell_str = np.array2string(cell, precision=6, separator=',', suppress_small=True)
-            pattern_str = np.array2string(np.array([
-                [a, 0, 0],
-                [b*cosab, b*sinab, 0],
-                [c*cosac,  c*(cosbc-cosac*cosab)/sinab, c*np.sqrt( 1 + 2*cosbc*cosac*cosab- cosbc**2-cosac**2-cosab**2 )/sinab],
-            ]), precision=6, separator=',', suppress_small=True)
+            pattern_str = np.array2string(cell_qe, precision=6, separator=',', suppress_small=True)
             raise ValueError(f"Cell \n{cell_str} does not match the expected pattern \n{pattern_str}. Please check the cell parameters or use ibrav = 0.")
 
-    new_pym_structure = pym_structure.make_supercell(transformation_matrix)
+    pym_structure.make_supercell(transformation_matrix)
 
-    return new_pym_structure, parameters
+    return pym_structure, parameters
 
 def check_conversion(structure, log=print):
     cell = np.array(structure.cell)
