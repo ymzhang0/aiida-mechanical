@@ -115,7 +115,9 @@ class Thermo_pwBaseWorkChain(ProtocolMixin, BaseRestartWorkChain):
         builder.thermo_pw['thermo_control'] = inputs['thermo_pw']['thermo_control']
 
         builder.clean_workdir = orm.Bool(inputs['clean_workdir'])
-        if 'kpoints_distance' in inputs:
+        if 'kpoints' in inputs:
+            builder.kpoints = inputs['kpoints']
+        else:
             builder.kpoints_distance = orm.Float(inputs['kpoints_distance'])
         builder.kpoints_force_parity = orm.Bool(inputs['kpoints_force_parity'])
         builder.max_iterations = orm.Int(inputs['max_iterations'])
@@ -150,13 +152,7 @@ class Thermo_pwBaseWorkChain(ProtocolMixin, BaseRestartWorkChain):
         super().setup()
         self.ctx.inputs = AttributeDict(self.exposed_inputs(Thermo_pwCalculation, 'thermo_pw'))
 
-        inputs = {
-            'structure': self.ctx.inputs.structure,
-            'metadata': {
-                'call_link_label': 'format_structure'
-            }
-        }
-        results = self.format_structure(**inputs)
+        results = self.format_structure(self.ctx.inputs.structure)
         self.ctx.inputs.structure = results['formated_structure']
 
         parameters = self.ctx.inputs.parameters.get_dict()
