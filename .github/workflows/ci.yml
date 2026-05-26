@@ -33,4 +33,4 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - run: pip install click==8.1.8 hatch
-      - run: hatch test
+      - run: hatch test --py ${{ matrix.python-version }}
