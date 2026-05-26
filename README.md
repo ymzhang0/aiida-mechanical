@@ -1,3 +1,3 @@
-# `aiida-thermo_pw`
+# `aiida-mechanical`
 
-AiiDA plugin package with workflows for thermo_pw
+AiiDA plugin package with workflows for mechanical properties

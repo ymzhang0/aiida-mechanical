@@ -7,13 +7,13 @@ import click
 
 from aiida import cmdline, orm
 
-from aiida_thermo_pw.workflows.thermo_pw import Thermo_pwBaseWorkChain
+from aiida_mechanical.workflows.base import Thermo_pwBaseWorkChain
 
-from aiida_thermo_pw.cli.params import RUN
-from aiida_thermo_pw.utils.structure import read_structure
-from aiida_thermo_pw.utils.workflows.builder.serializer import print_builder
-from aiida_thermo_pw.utils.workflows.builder.setter import set_parallelization
-from aiida_thermo_pw.utils.workflows.builder.submit import (
+from aiida_mechanical.cli.params import RUN
+from aiida_mechanical.utils.structure import read_structure
+from aiida_mechanical.utils.workflows.builder.serializer import print_builder
+from aiida_mechanical.utils.workflows.builder.setter import set_parallelization
+from aiida_mechanical.utils.workflows.builder.submit import (
     submit_and_add_group,
 )
 

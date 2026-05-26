@@ -11,7 +11,7 @@ First clone the repository from GitHub
 
 and install the package locally in **editable** mode (`-e`):
 
-    cd aiida-thermo_pw
+    cd aiida-mechanical
     pip install -e .
 
 :::{note}

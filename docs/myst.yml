@@ -1,8 +1,8 @@
 # See docs at: https://mystmd.org/guide/frontmatter
 version: 1
 project:
-  title: aiida-thermo_pw
-  description: AiiDA plugin for thermo_pw software
+  title: aiida-mechanical
+  description: AiiDA plugin for mechanical properties
   # keywords: []
   # authors: []
   # github: https://github.com/

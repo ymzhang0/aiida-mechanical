@@ -3,7 +3,7 @@ import re
 from aiida import orm
 import numpy
 
-from aiida_thermo_pw.calculations.thermo_pw import Thermo_pwCalculation
+from aiida_mechanical.calculations.thermo_pw import Thermo_pwCalculation
 
 from aiida_quantumespresso.parsers.base import BaseParser
 

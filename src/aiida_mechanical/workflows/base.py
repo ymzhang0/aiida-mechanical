@@ -8,8 +8,8 @@ from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
 from aiida_quantumespresso.common.types import ElectronicType, RestartType, SpinType
 from aiida_quantumespresso.workflows.protocols.utils import ProtocolMixin
 from aiida_quantumespresso.calculations.functions.create_kpoints_from_distance import create_kpoints_from_distance
-from aiida_thermo_pw.tools.structures import get_standardized_structure_pymatgen, convert_standardized_structure_pymatgen_to_qe
-from aiida_thermo_pw.calculations.thermo_pw import Thermo_pwCalculation
+from aiida_mechanical.tools.structures import get_standardized_structure_pymatgen, convert_standardized_structure_pymatgen_to_qe
+from aiida_mechanical.calculations.thermo_pw import Thermo_pwCalculation
 
 
 class Thermo_pwBaseWorkChain(ProtocolMixin, BaseRestartWorkChain):
@@ -75,7 +75,7 @@ class Thermo_pwBaseWorkChain(ProtocolMixin, BaseRestartWorkChain):
         """Return ``pathlib.Path`` to the ``.yaml`` file that defines the protocols."""
         from importlib_resources import files
 
-        import aiida_thermo_pw.workflows.protocols as thermo_pw_protocols
+        import aiida_mechanical.workflows.protocols as thermo_pw_protocols
         return files(thermo_pw_protocols) / 'base.yaml'
 
     @classmethod

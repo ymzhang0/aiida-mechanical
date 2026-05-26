@@ -3,9 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "aiida-thermo_pw"
+name = "aiida-mechanical"
 dynamic = ["version"]
-description = "The official AiiDA plugin for thermo_pw"
+description = "The official AiiDA plugin for mechanical properties"
 readme = "README.md"
 requires-python = ">=3.9"
 license = {file = "LICENSE.txt"}
@@ -60,11 +60,11 @@ pre-commit = [
 
 [dependency-groups]
 dev = [
-  "aiida-thermo_pw[docs,tests,pre-commit]",
+  "aiida-mechanical[docs,tests,pre-commit]",
 ]
 
 [tool.hatch.version]
-path = "src/aiida_thermo_pw/__about__.py"
+path = "src/aiida_mechanical/__about__.py"
 
 [tool.hatch.envs.default]
 installer = 'uv'
@@ -101,13 +101,13 @@ lint.ignore = [
 "tests/**/*.py" = ["INP001", "S101"]
 
 [project.entry-points.'aiida.calculations']
-"thermo_pw" = "aiida_thermo_pw.calculations.thermo_pw:Thermo_pwCalculation"
+"mechanical.thermo_pw" = "aiida_mechanical.calculations.thermo_pw:Thermo_pwCalculation"
 
 [project.entry-points.'aiida.parsers']
-"thermo_pw" = "aiida_thermo_pw.parsers.thermo_pw:Thermo_pwParser"
+"mechanical.thermo_pw" = "aiida_mechanical.parsers.thermo_pw:Thermo_pwParser"
 
 [project.entry-points.'aiida.workflows']
-"thermo_pw.base" = "aiida_thermo_pw.workflows.base:Thermo_pwBaseWorkChain"
+"mechanical.thermo_pw.base" = "aiida_mechanical.workflows.base:Thermo_pwBaseWorkChain"
 
 [tool.flynt]
 line-length = 120

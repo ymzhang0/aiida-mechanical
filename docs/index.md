@@ -1,5 +1,5 @@
 # Introduction
 
-This is the documentation of the `aiida-thermo_pw` Python package.
+This is the documentation of the `aiida-mechanical` Python package.
 
-AiiDA plugin for thermo_pw software
+AiiDA plugin for mechanical properties
