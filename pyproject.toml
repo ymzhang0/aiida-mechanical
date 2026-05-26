@@ -25,13 +25,20 @@ dependencies = [
   "aiida_core[atomic_tools]~=2.6",
   "aiida-quantumespresso>=4.11",
   "aiida-pseudo~=1.1",
+  "ase",
   "click~=8.0",
+  "deprecated>=1.2.0",
   "importlib_resources",
   "jsonschema",
+  "matplotlib",
   "numpy",
   "pydantic~=2.0",
   "packaging",
+  "pymatgen",
   "qe-tools~=2.0",
+  "pyyaml",
+  "rich",
+  "sympy",
   "xmlschema~=2.0",
 ]
 
@@ -104,11 +111,21 @@ lint.ignore = [
 [project.entry-points.'aiida.calculations']
 "mechanical.thermo_pw" = "aiida_mechanical.calculations.thermo_pw:Thermo_pwCalculation"
 
+[project.entry-points.'aiida.data']
+"mechanical.dislocation.cleavaged_structure" = "aiida_mechanical.data.cleavaged_structure:CleavagedStructureData"
+"mechanical.dislocation.faulted_structure" = "aiida_mechanical.data.faulted_structure:FaultedStructureData"
+
 [project.entry-points.'aiida.parsers']
 "mechanical.thermo_pw" = "aiida_mechanical.parsers.thermo_pw:Thermo_pwParser"
 
 [project.entry-points.'aiida.workflows']
 "mechanical.thermo_pw.base" = "aiida_mechanical.workflows.base:Thermo_pwBaseWorkChain"
+"mechanical.dislocation.gsfe" = "aiida_mechanical.workflows.dislocation.gsfe:GSFEWorkChain"
+"mechanical.dislocation.gsfe_relax" = "aiida_mechanical.workflows.dislocation.gsfe_relax:GSFERelaxWorkChain"
+"mechanical.dislocation.isfe" = "aiida_mechanical.workflows.dislocation.isfe:ISFEWorkChain"
+"mechanical.dislocation.esfe" = "aiida_mechanical.workflows.dislocation.esfe:ESFEWorkChain"
+"mechanical.dislocation.usfe" = "aiida_mechanical.workflows.dislocation.usfe:USFEWorkChain"
+"mechanical.dislocation.twinning" = "aiida_mechanical.workflows.dislocation.twinning:TwinningWorkChain"
 
 [tool.flynt]
 line-length = 120
