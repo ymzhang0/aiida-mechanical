@@ -1,6 +1,9 @@
+from aiida import orm
+
+
 def plot_group(
     ax,
-    group: orm.Group|str,
+    group: orm.Group | str,
     keys: list[str],
     **kwargs,
 ):

@@ -1,14 +1,19 @@
 # -*- coding: utf-8 -*-
 """Workchain to run a Quantum ESPRESSO pw.x calculation with automated error handling and restarts."""
+
 from aiida import orm
-from aiida.common import AttributeDict, exceptions
+from aiida.common import AttributeDict
 from aiida.engine import BaseRestartWorkChain, calcfunction, while_
-from aiida.plugins import CalculationFactory, GroupFactory
 from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
-from aiida_quantumespresso.common.types import ElectronicType, RestartType, SpinType
+from aiida_quantumespresso.common.types import ElectronicType, SpinType
 from aiida_quantumespresso.workflows.protocols.utils import ProtocolMixin
-from aiida_quantumespresso.calculations.functions.create_kpoints_from_distance import create_kpoints_from_distance
-from aiida_mechanical.tools.structures import get_standardized_structure_pymatgen, convert_standardized_structure_pymatgen_to_qe
+from aiida_quantumespresso.calculations.functions.create_kpoints_from_distance import (
+    create_kpoints_from_distance,
+)
+from aiida_mechanical.tools.structures import (
+    get_standardized_structure_pymatgen,
+    convert_standardized_structure_pymatgen_to_qe,
+)
 from aiida_mechanical.calculations.thermo_pw import Thermo_pwCalculation
 
 
@@ -76,7 +81,8 @@ class Thermo_pwBaseWorkChain(ProtocolMixin, BaseRestartWorkChain):
         from importlib_resources import files
 
         import aiida_mechanical.workflows.protocols as thermo_pw_protocols
-        return files(thermo_pw_protocols) / 'base.yaml'
+
+        return files(thermo_pw_protocols) / "base.yaml"
 
     @classmethod
     def get_builder_from_protocol(
@@ -89,15 +95,15 @@ class Thermo_pwBaseWorkChain(ProtocolMixin, BaseRestartWorkChain):
         spin_type=SpinType.NONE,
         initial_magnetic_moments=None,
         options=None,
-        **_
-        ):
-
+        **_,
+    ):
         inputs = cls.get_protocol_inputs(protocol, overrides)
 
         from copy import deepcopy
+
         pw_overrides = deepcopy(inputs)
-        pw_overrides['pw'] = pw_overrides.pop('thermo_pw')
-        pw_overrides['pw'].pop('thermo_control')
+        pw_overrides["pw"] = pw_overrides.pop("thermo_pw")
+        pw_overrides["pw"].pop("thermo_control")
         pw_builder = PwBaseWorkChain.get_builder_from_protocol(
             code=code,
             structure=structure,
@@ -112,15 +118,15 @@ class Thermo_pwBaseWorkChain(ProtocolMixin, BaseRestartWorkChain):
         builder = cls.get_builder()
 
         builder.thermo_pw._data = pw_builder.pw._data
-        builder.thermo_pw['thermo_control'] = inputs['thermo_pw']['thermo_control']
+        builder.thermo_pw["thermo_control"] = inputs["thermo_pw"]["thermo_control"]
 
-        builder.clean_workdir = orm.Bool(inputs['clean_workdir'])
-        if 'kpoints' in inputs:
-            builder.kpoints = inputs['kpoints']
+        builder.clean_workdir = orm.Bool(inputs["clean_workdir"])
+        if "kpoints" in inputs:
+            builder.kpoints = inputs["kpoints"]
         else:
-            builder.kpoints_distance = orm.Float(inputs['kpoints_distance'])
-        builder.kpoints_force_parity = orm.Bool(inputs['kpoints_force_parity'])
-        builder.max_iterations = orm.Int(inputs['max_iterations'])
+            builder.kpoints_distance = orm.Float(inputs["kpoints_distance"])
+        builder.kpoints_force_parity = orm.Bool(inputs["kpoints_force_parity"])
+        builder.max_iterations = orm.Int(inputs["max_iterations"])
 
         return builder
 
@@ -131,14 +137,16 @@ class Thermo_pwBaseWorkChain(ProtocolMixin, BaseRestartWorkChain):
         extras = structure.base.extras.all
         standardized_pym_structure = get_standardized_structure_pymatgen(structure)
 
-        qe_pym_structure, structure_parameters = convert_standardized_structure_pymatgen_to_qe(standardized_pym_structure)
+        qe_pym_structure, structure_parameters = (
+            convert_standardized_structure_pymatgen_to_qe(standardized_pym_structure)
+        )
         formated_structure = orm.StructureData(pymatgen_structure=qe_pym_structure)
 
         formated_structure.base.extras.set_many(extras)
         return {
-            'formated_structure': formated_structure,
-            'structure_parameters': orm.Dict(dict=structure_parameters)
-            }
+            "formated_structure": formated_structure,
+            "structure_parameters": orm.Dict(dict=structure_parameters),
+        }
 
     def setup(self):
         """Call the ``setup`` of the ``BaseRestartWorkChain`` and create the inputs dictionary in ``self.ctx.inputs``.
@@ -150,17 +158,20 @@ class Thermo_pwBaseWorkChain(ProtocolMixin, BaseRestartWorkChain):
         default namelists for the ``parameters`` are set to empty dictionaries if not specified.
         """
         super().setup()
-        self.ctx.inputs = AttributeDict(self.exposed_inputs(Thermo_pwCalculation, 'thermo_pw'))
+        self.ctx.inputs = AttributeDict(
+            self.exposed_inputs(Thermo_pwCalculation, "thermo_pw")
+        )
 
         results = self.format_structure(self.ctx.inputs.structure)
-        self.ctx.inputs.structure = results['formated_structure']
+        self.ctx.inputs.structure = results["formated_structure"]
 
         parameters = self.ctx.inputs.parameters.get_dict()
-        parameters['SYSTEM']['ibrav'] = results['structure_parameters']['ibrav']
+        parameters["SYSTEM"]["ibrav"] = results["structure_parameters"]["ibrav"]
         self.ctx.inputs.parameters = orm.Dict(dict=parameters)
 
-        self.ctx.inputs.settings = self.ctx.inputs.settings.get_dict() if 'settings' in self.ctx.inputs else {}
-
+        self.ctx.inputs.settings = (
+            self.ctx.inputs.settings.get_dict() if "settings" in self.ctx.inputs else {}
+        )
 
     def validate_kpoints(self):
         """Validate the inputs related to k-points.
@@ -169,19 +180,19 @@ class Thermo_pwBaseWorkChain(ProtocolMixin, BaseRestartWorkChain):
         the case of the latter, the `KpointsData` will be constructed for the input `StructureData` using the
         `create_kpoints_from_distance` calculation function.
         """
-        if all(key not in self.inputs for key in ['kpoints', 'kpoints_distance']):
+        if all(key not in self.inputs for key in ["kpoints", "kpoints_distance"]):
             return self.exit_codes.ERROR_INVALID_INPUT_KPOINTS
 
         try:
             kpoints = self.inputs.kpoints
         except AttributeError:
             inputs = {
-                'structure': self.inputs.thermo_pw.structure,
-                'distance': self.inputs.kpoints_distance,
-                'force_parity': self.inputs.get('kpoints_force_parity', orm.Bool(False)),
-                'metadata': {
-                    'call_link_label': 'create_kpoints_from_distance'
-                }
+                "structure": self.inputs.thermo_pw.structure,
+                "distance": self.inputs.kpoints_distance,
+                "force_parity": self.inputs.get(
+                    "kpoints_force_parity", orm.Bool(False)
+                ),
+                "metadata": {"call_link_label": "create_kpoints_from_distance"},
             }
             kpoints = create_kpoints_from_distance(**inputs)  # pylint: disable=unexpected-keyword-arg
 
@@ -189,7 +200,6 @@ class Thermo_pwBaseWorkChain(ProtocolMixin, BaseRestartWorkChain):
 
     def prepare_process(self):
         pass
-
 
     @staticmethod
     def _clean_workdir(node):
@@ -212,12 +222,13 @@ class Thermo_pwBaseWorkChain(ProtocolMixin, BaseRestartWorkChain):
         super().on_terminated()
 
         if self.inputs.clean_workdir.value is False:
-            self.report('remote folders will not be cleaned')
+            self.report("remote folders will not be cleaned")
             return
 
         if self.node.is_finished_ok:
             cleaned_calcs = self._clean_workdir(self.node)
 
             if cleaned_calcs:
-                self.report(f"cleaned remote folders of calculations: {' '.join(map(str, cleaned_calcs))}")
-
+                self.report(
+                    f"cleaned remote folders of calculations: {' '.join(map(str, cleaned_calcs))}"
+                )

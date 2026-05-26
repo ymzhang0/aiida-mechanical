@@ -1,14 +1,14 @@
 from collections.abc import Mapping, Iterable
-from rich import print as rprint
 
 
 class Printer:
-    prefix_item = '├── '
-    prefix_last_item = '└── '
-    prefix_indent = '    '
-    prefix_parent = '│   '
+    prefix_item = "├── "
+    prefix_last_item = "└── "
+    prefix_indent = "    "
+    prefix_parent = "│   "
 
     _print = print
+
     def __init__(self, data: dict | list):
         """
         Args:
@@ -32,7 +32,7 @@ class Printer:
         items = list(data.items()) if is_mapping else list(enumerate(data))
 
         for i, item in enumerate(items):
-            is_last = (i == len(items) - 1)
+            is_last = i == len(items) - 1
             connector = self.prefix_last_item if is_last else self.prefix_item
 
             if is_mapping:
@@ -43,7 +43,9 @@ class Printer:
                 self._print(f"{prefix}{connector}[{index}]")
 
             # prepare prefix for next level
-            new_prefix = prefix + (self.prefix_indent if is_last else self.prefix_parent)
+            new_prefix = prefix + (
+                self.prefix_indent if is_last else self.prefix_parent
+            )
 
             # recursive condition: value is a map or non-string iterable
             if isinstance(value, (Mapping, Iterable)) and not isinstance(value, str):

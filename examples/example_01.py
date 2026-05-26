@@ -3,6 +3,7 @@
 
 Usage: ./example_01.py
 """
+
 import click
 
 from aiida import cmdline, orm
@@ -25,19 +26,22 @@ def submit(
     run: bool = False,
 ):
     """Submit a ``Thermo_pwBaseWorkChain`` to calculate the thermodynamic properties."""
-    builder = Thermo_pwBaseWorkChain.get_builder_from_protocol(code, structure=structure)
+    builder = Thermo_pwBaseWorkChain.get_builder_from_protocol(
+        code, structure=structure
+    )
 
     # You can change parallelization here
     parallelization = {
         "num_mpiprocs_per_machine": 8,
         "npool": 4,
     }
-    set_parallelization(builder, parallelization, process_class=PwBandsWorkChain)
+    set_parallelization(builder, parallelization, process_class=Thermo_pwBaseWorkChain)
 
     print_builder(builder)
 
     if run:
         submit_and_add_group(builder, group)
+
 
 @click.command()
 @cmdline.utils.decorators.with_dbenv()

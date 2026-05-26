@@ -1,15 +1,14 @@
-from re import S
 from aiida import orm
-from aiida.common.links import LinkType
 from aiida.engine import ProcessState
 from enum import Enum
 from collections import OrderedDict
-from abc import ABC, abstractmethod
-from rich import print as rprint
+
+
 class ThermoPwBaseWorkChainState(Enum):
     """
     Analyser for the ThermoPwBaseWorkChain.
     """
+
     FINISHED_OK = 0
     WAITING = 1
     RUNNING = 2
@@ -20,20 +19,26 @@ class ThermoPwBaseWorkChainState(Enum):
     ERROR_NSTEP = 7
     UNKNOWN = 999
 
+
 class ThermoPwBaseAnalyser:
     """
     Analyser for the ThermoPwBaseWorkChain.
     """
-    _all_descendants = OrderedDict([
-        ('thermo_pw', None),
-    ])
+
+    _all_descendants = OrderedDict(
+        [
+            ("thermo_pw", None),
+        ]
+    )
 
     def __init__(self, workchain: orm.WorkChainNode):
         self.node = workchain
         self.state = ThermoPwBaseWorkChainState.UNKNOWN
         self.descendants = {}
         for link_label, _ in self._all_descendants.items():
-            descendants = workchain.base.links.get_outgoing(link_label_filter=link_label).all_nodes()
+            descendants = workchain.base.links.get_outgoing(
+                link_label_filter=link_label
+            ).all_nodes()
             if descendants != []:
                 self.descendants[link_label] = descendants
 
@@ -41,21 +46,20 @@ class ThermoPwBaseAnalyser:
         """Get the iterations of the workchain."""
 
         iterations = []
-        for (node, link_type, link_label) in self.node.base.links.get_outgoing().all():
-            if link_label.startswith('iteration'):
+        for node, link_type, link_label in self.node.base.links.get_outgoing().all():
+            if link_label.startswith("iteration"):
                 iterations.append(node)
         return iterations
 
     def check_process_state(self):
-
-        from collections import deque
-        from io import StringIO
-
         state = ThermoPwBaseWorkChainState.UNKNOWN
-        message = ''
-        
+        message = ""
 
-        source_db, source_id = self.node.inputs.thermo_pw.structure.base.extras.get_many(('source_db', 'source_id'))
+        source_db, source_id = (
+            self.node.inputs.thermo_pw.structure.base.extras.get_many(
+                ("source_db", "source_id")
+            )
+        )
         source = f"{source_db}-{source_id}"
 
         if self.node.process_state == ProcessState.WAITING:
@@ -79,21 +83,33 @@ class ThermoPwBaseAnalyser:
                     message = f"{self.node.process_state} excepted in final iteration [{final_iteration.pk}]"
                     return state, message
                 stderr = final_iteration.get_scheduler_stderr()
-                aiida_out = final_iteration.outputs.retrieved.get_object_content("aiida.out")
+                aiida_out = final_iteration.outputs.retrieved.get_object_content(
+                    "aiida.out"
+                )
                 for error, error_message in (
-                    (ThermoPwBaseWorkChainState.ERROR_TOO_MANY_PROCESSES, 'there are processes with no planes.'),
-                    (ThermoPwBaseWorkChainState.ERROR_TIME_LIMIT,  'TIME LIMIT'),
+                    (
+                        ThermoPwBaseWorkChainState.ERROR_TOO_MANY_PROCESSES,
+                        "there are processes with no planes.",
+                    ),
+                    (ThermoPwBaseWorkChainState.ERROR_TIME_LIMIT, "TIME LIMIT"),
                 ):
                     if error_message in stderr:
                         state = error
-                        message = f"{error_message} in final iteration [{final_iteration.pk}]"
+                        message = (
+                            f"{error_message} in final iteration [{final_iteration.pk}]"
+                        )
                         return state, message
                 for error, error_message in (
-                    (ThermoPwBaseWorkChainState.ERROR_NSTEP, 'Incorrect nstep, check elastic_algorithm'),
+                    (
+                        ThermoPwBaseWorkChainState.ERROR_NSTEP,
+                        "Incorrect nstep, check elastic_algorithm",
+                    ),
                 ):
                     if error_message in aiida_out:
                         state = error
-                        message = f"{error_message} in final iteration [{final_iteration.pk}]"
+                        message = (
+                            f"{error_message} in final iteration [{final_iteration.pk}]"
+                        )
                         return state, message
                 state = ThermoPwBaseWorkChainState.FINISHED_OK
                 message = f"{self.node.process_state} finished with exit status {self.node.exit_status} and final iteration [{final_iteration.pk}]"
@@ -109,7 +125,6 @@ class ThermoPwBaseAnalyser:
 
         return state, message
 
-
     def delete_nodes_and_remote_folder(
         self,
     ):
@@ -123,4 +138,4 @@ class ThermoPwBaseAnalyser:
                 except (IOError, OSError, KeyError, NotExistentAttributeError):
                     pass
 
-        delete_nodes([self.node.pk], dry_run=False)   
+        delete_nodes([self.node.pk], dry_run=False)
