@@ -1,0 +1,135 @@
+# Quick Start Guide
+
+This guide provides simple, ready-to-run Python examples for the two core submodules of `aiida-mechanical`:
+1. **`thermo_pw`**: Calculating crystal elastic constants.
+2. **`dislocation`**: Evaluating Generalized Stacking Fault Energy curves (GSFE).
+
+---
+
+## 1. Elastic Constants (`thermo_pw`)
+
+The `mechanical.thermo_pw.base` workflow calculates elastic constants.
+
+### Python Example: Running a Thermo_pw SCF Workflow
+
+Save this script as `run_thermopw.py` and run it with `python run_thermopw.py`:
+
+```python
+from aiida import engine, orm
+from aiida.plugins import WorkflowFactory
+from ase.build import bulk
+
+# 1. Load the Thermo_pw base workflow
+Thermo_pwBaseWorkChain = WorkflowFactory("mechanical.thermo_pw.base")
+
+# 2. Setup your structure (e.g., Silicon primitive cell) using ASE
+silicon_ase = bulk("Si", "diamond", a=5.43)
+structure = orm.StructureData(ase=silicon_ase)
+
+# 3. Define the Quantum ESPRESSO pw.x code (replace with your code label)
+code = orm.load_code("pw-7.2@localhost")
+
+# You can use manually defined overrides to specify the resource and calculation parameters.
+overrides = {
+    "metadata": {
+      "options": {
+        "account": "XXX",
+        "append_text": "",
+        "max_wallclock_seconds": 36000,
+        "parser_name": "thermo_pw",
+        "prepend_text": '',
+        "qos": 'XXX',
+        "queue_name": 'XXX',
+        "resources": {
+          "num_machines": 1,
+          "num_mpiprocs_per_machine": 32
+        },
+        "withmpi": true
+      }
+    },
+    "thermo_control": {
+      "what": "scf_elastic_constants",
+      "frozen_ions": false,
+    },
+    "parameters": {
+      "CONTROL": {
+        "calculation": "scf",
+        "tstress": true,
+        "tprnfor": true,
+        "disk_io": "nowf"
+      },
+      "SYSTEM": {
+        "occupations": "smearing",
+        "smearing": "cold",
+        "degauss": 0.02
+      },
+      "ELECTRONS": {
+        "conv_thr": 1.0e-10,
+        "diagonalization": "david",
+        "electron_maxstep": 80,
+        "mixing_beta": 0.4
+      },
+    }
+}
+# 4. Generate the workchain builder using the default 'moderate' protocol
+builder = Thermo_pwBaseWorkChain.get_builder_from_protocol(
+    code=code,
+    structure=structure,
+    protocol="moderate",
+    overrides={}
+)
+
+# 5. Submit the calculation to the AiiDA daemon
+node = engine.submit(builder)
+print(f"Submitted mechanical.thermo_pw.base<{node.pk}> to calculate elastic properties.")
+```
+
+---
+
+## 2. Generalized Stacking Fault Energy (`gsfe`)
+
+The `mechanical.dislocation.gsfe` workflow automates the evaluation of crystal slip and planar shear faults. It shears a conventional cell along a gliding plane (e.g., `(111)`) to compute the energy barrier.
+
+### Python Example: Running a GSFE Workflow
+
+Firstly, we need to setup the code, unit-cell structure and parameters. Here we use FCC Aluminum as an example.
+
+```python
+from aiida import engine, orm
+from aiida.plugins import WorkflowFactory
+from ase.build import bulk
+
+# 1. Load the GSFE workflow and custom data structures
+GSFEWorkChain = WorkflowFactory("mechanical.dislocation.gsfe")
+
+# 2. Setup a bulk material structure (e.g., FCC Aluminum)
+al_ase = bulk("Al", "fcc", a=4.05)
+structure = orm.StructureData(ase=al_ase)
+
+# 3. Define the Quantum ESPRESSO pw.x code (replace with your code label)
+code = orm.load_code("pw-7.2@localhost")
+```
+
+Then we can define the calculation parameters and generate the workchain builder:
+
+```python
+# 4. Generate the SFE builder using the default protocol API
+# We specify a (111) gliding plane and repeat the unit cell 4 times
+builder = GSFEWorkChain.get_builder_from_protocol(
+    code=code,
+    structure=structure,
+    protocol="moderate",
+    n_repeats=orm.Int(4),
+    gliding_plane=orm.Str("1 1 1")
+)
+
+# 5. Define resource limits
+builder.relax.base_relax.metadata.options.resources = {
+    "num_machines": 1,
+    "num_mpiprocs_per_machine": 4
+}
+
+# 6. Submit the workflow to the AiiDA daemon
+node = engine.submit(builder)
+print(f"Submitted GSFEWorkChain<{node.pk}> along plane (111).")
+```
